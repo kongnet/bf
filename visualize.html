@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brainfuck 可视化解释器</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #1a1a2e;
+        color: #eee;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #00d4ff;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .panel {
+        background: #16213e;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .panel h2 {
+        color: #00d4ff;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+        border-bottom: 2px solid #0f3460;
+        padding-bottom: 10px;
+      }
+
+      .code-display {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.8;
+        background: #0f3460;
+        padding: 15px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      #codeInput {
+        width: 100%;
+        height: 120px;
+        background: #0f3460;
+        border: 1px solid #00d4ff;
+        border-radius: 8px;
+        color: #eee;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        resize: vertical;
+      }
+
+      .code-display .char {
+        display: inline-block;
+        padding: 2px 4px;
+        margin: 1px;
+        border-radius: 3px;
+        transition: all 0.1s ease;
+      }
+
+      .code-display .current {
+        background: #ffd700;
+        color: #000;
+        font-weight: bold;
+        box-shadow: 0 0 10px #ffd700;
+      }
+
+      .memory-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 5px;
+      }
+
+      .cell {
+        background: #0f3460;
+        padding: 10px 5px;
+        text-align: center;
+        border-radius: 5px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      .cell .addr {
+        font-size: 10px;
+        color: #666;
+        margin-bottom: 3px;
+      }
+
+      .cell .value {
+        font-size: 16px;
+        font-weight: bold;
+        color: #00d4ff;
+      }
+
+      .cell.active {
+        background: #ffd700;
+        border-color: #ff9500;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+      }
+
+      .cell.active .addr,
+      .cell.active .value {
+        color: #000;
+      }
+
+      .cell.changed {
+        animation: pulse 0.3s ease;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+          background: #4ade80;
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .io-section {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .input-area,
+      .output-area {
+        background: #0f3460;
+        padding: 15px;
+        border-radius: 8px;
+      }
+
+      .input-area textarea {
+        width: 100%;
+        height: 80px;
+        background: #16213e;
+        border: 1px solid #00d4ff;
+        border-radius: 5px;
+        color: #eee;
+        padding: 10px;
+        font-family: 'Courier New', monospace;
+        resize: none;
+      }
+
+      .output-area pre {
+        background: #16213e;
+        padding: 10px;
+        border-radius: 5px;
+        min-height: 60px;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .controls {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 12px 30px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: bold;
+      }
+
+      .btn-start {
+        background: #4ade80;
+        color: #000;
+      }
+
+      .btn-start:hover {
+        background: #22c55e;
+        transform: translateY(-2px);
+      }
+
+      .btn-step {
+        background: #00d4ff;
+        color: #000;
+      }
+
+      .btn-step:hover {
+        background: #0ea5e9;
+        transform: translateY(-2px);
+      }
+
+      .btn-reset {
+        background: #ef4444;
+        color: #fff;
+      }
+
+      .btn-reset:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+      }
+
+      .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .speed-control input {
+        width: 150px;
+      }
+
+      .status {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 15px;
+        background: #0f3460;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+      }
+
+      .status .highlight {
+        color: #ffd700;
+        font-weight: bold;
+      }
+
+      .legend {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+        font-size: 14px;
+      }
+
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .legend .dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+      }
+
+      .legend .dot.code {
+        background: #ffd700;
+      }
+
+      .legend .dot.cell {
+        background: #ffd700;
+        border: 2px solid #ff9500;
+      }
+
+      .legend .dot.changed {
+        background: #4ade80;
+      }
+
+      .presets {
+        margin-bottom: 10px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .presets button {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧠 Brainfuck 可视化解释器</h1>
+
+    <div class="container">
+      <div class="panel">
+        <h2>📝 代码</h2>
+        <div class="presets">
+          <button onclick="loadPreset('hello')">Hello World</button>
+          <button onclick="loadPreset('love')">I love your</button>
+        </div>
+        <textarea id="codeInput" placeholder="输入 Brainfuck 代码..."></textarea>
+        <div class="code-display" id="codeDisplay" style="margin-top: 10px"></div>
+      </div>
+
+      <div class="panel">
+        <h2>💾 内存 (0-99)</h2>
+        <div class="memory-grid" id="memoryGrid"></div>
+      </div>
+
+      <div class="panel io-section">
+        <div class="input-area">
+          <h2>📥 输入</h2>
+          <textarea id="inputArea" placeholder="在此输入字符..."></textarea>
+        </div>
+        <div class="output-area">
+          <h2>📤 输出</h2>
+          <pre id="outputArea"></pre>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-start" onclick="run()">▶️ 运行</button>
+        <button class="btn-step" onclick="step()">👆 单步</button>
+        <button class="btn-reset" onclick="reset()">🔄 重置</button>
+        <div class="speed-control">
+          <label>速度:</label>
+          <input type="range" id="speedSlider" min="10" max="500" value="50" />
+          <span id="speedValue">50ms</span>
+        </div>
+      </div>
+
+      <div class="status" id="status">
+        准备就绪 - 输入 Brainfuck 代码并点击运行
+      </div>
+
+      <div class="legend">
+        <span
+          ><div class="dot code"></div>
+          当前代码</span
+        >
+        <span
+          ><div class="dot cell"></div>
+          当前内存</span
+        >
+        <span
+          ><div class="dot changed"></div>
+          值已更改</span
+        >
+      </div>
+    </div>
+
+    <script src="index.js"></script>
+    <script>
+      const presets = {
+        hello: `>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.
+  +++++++..+++.>>>++++++++[<++++>-]<.>>>++++++++++[<+++++++++>-]<---.
+  <<<<.+++.------.--------.>>+.>++++++++++.`,
+        love: `
+     +++++       +++++
+[->+++++++>+++>++++++++++<<<]
+  >+++.>++.>++++++++.+++.++
+    +++++.---------------
+      --.<.>+++++++++++
+        +++++++++.---
+          -------.+
+            +++++
+              .`
+      }
+
+      let code = presets.hello
+      let input = ''
+      let memory = new Uint8Array(100)
+      let ptr = 0
+      let codePtr = 0
+      let output = []
+      let inputPtr = 0
+      let stack = []
+      let isRunning = false
+      let timer = null
+      let stepCount = 0
+
+      const codeInput = document.getElementById('codeInput')
+      const codeDisplay = document.getElementById('codeDisplay')
+      const memoryGrid = document.getElementById('memoryGrid')
+      const inputArea = document.getElementById('inputArea')
+      const outputArea = document.getElementById('outputArea')
+      const status = document.getElementById('status')
+      const speedSlider = document.getElementById('speedSlider')
+      const speedValue = document.getElementById('speedValue')
+
+      // 获取解释器函数 (index.js 暴露的全局变量)
+      const bf = window.js2BF
+
+      function init() {
+        codeInput.value = code
+        renderCode()
+        renderMemory()
+        inputArea.value = ''
+        outputArea.textContent = ''
+        status.innerHTML =
+          '准备就绪 - <span class="highlight">输入 Brainfuck 代码并点击运行</span>'
+      }
+
+      function loadPreset(name) {
+        code = presets[name]
+        codeInput.value = code
+        reset()
+      }
+
+      function renderCode() {
+        let html = ''
+        for (let i = 0; i < code.length; i++) {
+          const char = code[i]
+          const classes = ['char']
+          if (i === codePtr) classes.push('current')
+          const displayChar =
+            char === '>' ? '&gt;' : char === '<' ? '&lt;' : char
+          html += `<span class="${classes.join(' ')}">${displayChar}</span>`
+        }
+        codeDisplay.innerHTML = html
+
+        if (codePtr < code.length) {
+          codeDisplay.children[codePtr]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          })
+        }
+      }
+
+      function renderMemory() {
+        let html = ''
+        for (let i = 0; i < 100; i++) {
+          const isActive = i === ptr
+          html += `
+          <div class="cell ${isActive ? 'active' : ''}" id="cell-${i}">
+            <div class="addr">${i.toString().padStart(3, '0')}</div>
+            <div class="value">${memory[i]}</div>
+          </div>
+        `
+        }
+        memoryGrid.innerHTML = html
+      }
+
+      function updateCell(index) {
+        const cell = document.getElementById(`cell-${index}`)
+        if (cell) {
+          cell.classList.add('changed')
+          cell.querySelector('.value').textContent = memory[index]
+          setTimeout(() => cell.classList.remove('changed'), 300)
+        }
+      }
+
+      function getMatchingBracket(code, pos) {
+        const char = code[pos]
+        const isForward = char === '['
+        const target = isForward ? ']' : '['
+        const direction = isForward ? 1 : -1
+        let count = 0
+
+        for (
+          let i = pos + direction;
+          i >= 0 && i < code.length;
+          i += direction
+        ) {
+          if (code[i] === char) count++
+          else if (code[i] === target) {
+            count--
+            if (count === 0) return i
+          }
+        }
+        return -1
+      }
+
+      function executeCommand() {
+        if (codePtr >= code.length) {
+          stopExecution()
+          status.innerHTML = `执行完成! 共 <span class="highlight">${stepCount}</span> 步`
+          return false
+        }
+
+        const char = code[codePtr]
+        let nextPtr = codePtr
+
+        switch (char) {
+          case '>':
+            ptr = Math.min(99, ptr + 1)
+            break
+          case '<':
+            ptr = Math.max(0, ptr - 1)
+            break
+          case '+':
+            memory[ptr] = (memory[ptr] + 1) % 256
+            updateCell(ptr)
+            break
+          case '-':
+            memory[ptr] = (memory[ptr] + 255) % 256
+            updateCell(ptr)
+            break
+          case '.':
+            output.push(String.fromCharCode(memory[ptr]))
+            outputArea.textContent = output.join('')
+            break
+          case ',':
+            if (inputPtr < input.length) {
+              memory[ptr] = input.charCodeAt(inputPtr)
+              inputPtr++
+              updateCell(ptr)
+            } else {
+              memory[ptr] = 0
+              updateCell(ptr)
+            }
+            break
+          case '[':
+            if (memory[ptr] === 0) {
+              nextPtr = getMatchingBracket(code, codePtr)
+            } else {
+              stack.push(codePtr)
+            }
+            break
+          case ']':
+            if (memory[ptr] !== 0) {
+              nextPtr = stack[stack.length - 1] || codePtr
+            } else {
+              stack.pop()
+            }
+            break
+        }
+
+        codePtr = nextPtr + 1
+        stepCount++
+        return true
+      }
+
+      function updateStatus() {
+        const cmds = {
+          '>': '向右移动指针',
+          '<': '向左移动指针',
+          '+': '增加当前单元格值',
+          '-': '减少当前单元格值',
+          '.': '输出字符',
+          ',': '输入字符',
+          '[': '循环开始 (值为0时跳过)',
+          ']': '循环结束 (值不为0时回跳)'
+        }
+        const currentCmd = code[codePtr]
+        const desc = cmds[currentCmd] || '未知命令'
+        status.innerHTML = `步骤 <span class="highlight">${stepCount}</span> | 当前命令: <span class="highlight">${currentCmd}</span> - ${desc} | 指针: <span class="highlight">${ptr}</span> | 值: <span class="highlight">${memory[ptr]}</span>`
+      }
+
+      function run() {
+        if (isRunning) return
+        code = codeInput.value
+        input = inputArea.value
+        reset()
+        isRunning = true
+        executeStep()
+      }
+
+      function executeStep() {
+        if (!isRunning) return
+        if (!executeCommand()) return
+        renderCode()
+        renderMemory()
+        updateStatus()
+
+        const speed = parseInt(speedSlider.value)
+        timer = setTimeout(executeStep, speed)
+      }
+
+      function step() {
+        if (isRunning) {
+          clearTimeout(timer)
+          isRunning = false
+        }
+        code = codeInput.value
+        input = inputArea.value
+        if (executeCommand()) {
+          renderCode()
+          renderMemory()
+          updateStatus()
+        }
+      }
+
+      function stopExecution() {
+        isRunning = false
+        if (timer) {
+          clearTimeout(timer)
+          timer = null
+        }
+      }
+
+      function reset() {
+        stopExecution()
+        memory = new Uint8Array(100)
+        ptr = 0
+        codePtr = 0
+        inputPtr = 0
+        output = []
+        stack = []
+        stepCount = 0
+        code = codeInput.value
+        input = inputArea.value
+        renderCode()
+        renderMemory()
+        outputArea.textContent = ''
+        status.innerHTML =
+          '已重置 - <span class="highlight">点击运行开始执行</span>'
+      }
+
+      speedSlider.addEventListener('input', e => {
+        speedValue.textContent = `${e.target.value}ms`
+      })
+
+      init()
+    </script>
+  </body>
+</html>

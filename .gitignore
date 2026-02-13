@@ -17,7 +17,6 @@ test??.json
 *.ntvs*
 *.njsproj
 *.sln
-*.html
 config.local.js
 
 .vscode/

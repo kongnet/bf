@@ -7,6 +7,10 @@ npm i bfbf
 ```
 
 ```javascript
+visualize.html 可视化html
+```
+
+```javascript
 const bf = require('bfbf)
 const input = ''
 console.log(bf(hanoiCode, input, 1)) // 第三个参数是是否使用流模式输出
